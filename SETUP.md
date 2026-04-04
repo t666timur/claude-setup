@@ -444,3 +444,55 @@ ls -lt ~/claude_logs/photos/
 ---
 
 *Обновлено: 2026-03-29*
+
+---
+
+## 10. Cloudflare Turnstile Bypass (webdatabays.com)
+
+### Проблема
+Cloudflare Turnstile — интерактивная капча в cross-origin iframe, headless браузер не проходит.
+
+### Решение: Playwright + FlareSolverr
+
+```bash
+# Зависимости
+pip install playwright requests --break-system-packages
+playwright install chromium
+pip install flask requests-toolbelt --break-system-packages
+
+# Клонировать FlareSolverr
+git clone https://github.com/FlareSolverr/FlareSolverr ~/FlareSolverr
+cd ~/FlareSolverr && pip install -r requirements.txt --break-system-packages
+
+# Установить Chromium через snap (нужен для FlareSolverr)
+sudo snap install chromium
+
+# AppArmor (иначе Chromium не запустится без sandbox)
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+# Запуск
+Xvfb :99 -screen 0 1280x800x24 -ac &
+sleep 2
+cd ~/FlareSolverr && DISPLAY=:99 python3 src/flaresolverr.py &
+sleep 10
+
+# Логин + обход Turnstile
+python3 ~/claude-setup/scripts/webdatabays_login.py
+# Результат: /tmp/workshop_cookies.json
+```
+
+### Ключевые нюансы
+- НЕ использовать `networkidle` после submit — CF держит XHR бесконечно
+- cf_clearance привязан к IP — нельзя брать из домашнего браузера
+- FlareSolverr может упасть на 1-й попытке — скрипт retry автоматически
+
+---
+
+## 11. Car Database Agent (webdatabays.com)
+
+Агент для ответов на вопросы об автомобилях через webdatabays.com:
+- Пользователь задаёт вопрос → агент уточняет (марка, модель, год, двигатель)
+- Навигирует на сайт → находит данные → возвращает текст + скриншоты
+- Подходит для: схем предохранителей, технических данных, расположения деталей
+
+Скрипты: `scripts/webdatabays_login.py` (bypass), `scripts/car_agent.py` (в разработке)
